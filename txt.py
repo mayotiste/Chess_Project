@@ -4,17 +4,6 @@ import numpy as np
 
 def get_image_info(image_path, threshold=128):
     """Récupère des informations sur une image, telles que la taille, le niveau de gris, le format, et le seuil de binarisation."""
-     # Partie fixe que l'on souhaite inclure dans chaque fichier texte
-    fixed_content = (
-        "===== RAPPORT D'ANALYSE D'IMAGES =====\n"
-        "Ce fichier contient des informations sur les images analysées.\n"
-        "Les paramètres répertoriés incluent :\n"
-        "- Seuil de binarisation\n"
-        "- Taille (largeur x hauteur)\n"
-        "- Niveau de gris moyen\n"
-        "- Format de l'image\n"
-        "======================================\n\n"
-    )
     # Ouvrir l'image
     with Image.open(image_path) as img:
         # Obtenir la taille et le format
@@ -29,8 +18,11 @@ def get_image_info(image_path, threshold=128):
         
         # Binariser l'image avec le seuil donné
         binary_image = gray_image.point(lambda p: p > threshold and 255)
-        
-    return size, is_grayscale, img_format, threshold
+
+    # Calculer le niveau de gris moyen
+    gray_level = np.mean(np.array(gray_image))
+
+    return size, is_grayscale, img_format, threshold, gray_level
 
 def create_image_report(image_paths, output_txt_path, search_terms):
     """Crée un rapport sous forme de fichier texte répertoriant les informations sur les images."""
@@ -53,6 +45,7 @@ def create_image_report(image_paths, output_txt_path, search_terms):
         "#     408 768 27 51   -> bounding box around this word in x,y,w,h format\n"
         "#     AT              -> the grammatical tag for this word, see the\n"
         "#                        file tagset.txt for an explanation\n"
+        "#     A               -> the transcription for this word\n"
         "#\n"
     )
 
@@ -64,19 +57,20 @@ def create_image_report(image_paths, output_txt_path, search_terms):
         # Parcourir chaque image dans la liste des chemins d'images
         for index, image_path in enumerate(image_paths):
             # Récupérer les informations de l'image
-            size, is_grayscale, img_format, threshold = get_image_info(image_path)
+            size, is_grayscale, img_format, threshold, gray_level = get_image_info(image_path)
+
 
             # Format de la ligne
             word_id = f"a01-000u-00-{index:02d}"  # Générer l'ID de mot
             result = "ok"  # Remplacer par une logique pour déterminer le résultat si nécessaire
             graylevel = threshold  # Utiliser le seuil comme niveau de gris
             components = 1  # Remplacer par le nombre réel de composants
-            bounding_box = f"{size[0]} {size[1]} 27 51"  # Exemple de format (x, y, w, h)   -> ICI PAS W H
+            bounding_box = f"{size[0]} {size[1]} 27 51"  # Exemple de format (x, y, w, h)
             grammatical_tag = "AT"  # Exemple de balise grammaticale
             transcription = "A"  # Exemple de transcription
 
-            # Ajouter les caractères de search_terms à la fin de la ligne
-            search_terms_str = ''.join(search_terms)  # Convertir la liste en chaîne
+            # Ajouter les caractères de search_terms à la fin de la ligne sans espaces
+            search_terms_str = ''.join(search_terms)  # Convertir la liste en chaîne sans espaces
             report_line = f"{word_id} {result} {graylevel} {components} {bounding_box} {grammatical_tag} {transcription} {search_terms_str}\n"
 
             # Écrire la ligne dans le fichier texte
@@ -97,11 +91,9 @@ def collect_images_from_directories(directories):
     return image_paths
 
 # Exécution principale
-import os
-
 def main_txt(search_terms):
     # Liste des répertoires où se trouvent les images
-    base_path = "C:\\Users\\Utilisateur\\OneDrive\\Documents\\Chess\\Chess_Project"
+    base_path = r"C:\\Users\\Utilisateur\\OneDrive\\Documents\\Chess\\image_concatenee"
     
     # Collecter les chemins d'images
     directories = [os.path.join(base_path, ''.join(search_terms))]
@@ -110,7 +102,7 @@ def main_txt(search_terms):
     
     # Générer le fichier de rapport des images
     output_txt_path = os.path.join(base_path, f"rapport_images_{''.join(search_terms)}.txt")
-    create_image_report(image_paths, output_txt_path,search_terms)
+    create_image_report(image_paths, output_txt_path, search_terms)
 
 # Lancer le programme principal
 if __name__ == "__main__":
