@@ -4,17 +4,6 @@ import numpy as np
 
 def get_image_info(image_path, threshold=128):
     """Récupère des informations sur une image, telles que la taille, le niveau de gris, le format, et le seuil de binarisation."""
-     # Partie fixe que l'on souhaite inclure dans chaque fichier texte
-    fixed_content = (
-        "===== RAPPORT D'ANALYSE D'IMAGES =====\n"
-        "Ce fichier contient des informations sur les images analysées.\n"
-        "Les paramètres répertoriés incluent :\n"
-        "- Seuil de binarisation\n"
-        "- Taille (largeur x hauteur)\n"
-        "- Niveau de gris moyen\n"
-        "- Format de l'image\n"
-        "======================================\n\n"
-    )
     # Ouvrir l'image
     with Image.open(image_path) as img:
         # Obtenir la taille et le format
@@ -29,37 +18,63 @@ def get_image_info(image_path, threshold=128):
         
         # Binariser l'image avec le seuil donné
         binary_image = gray_image.point(lambda p: p > threshold and 255)
-        
-    return size, is_grayscale, img_format, threshold
 
-def create_image_report(image_paths, output_txt_path):
+    # Calculer le niveau de gris moyen
+    gray_level = np.mean(np.array(gray_image))
+
+    return size, is_grayscale, img_format, threshold, gray_level
+
+def create_image_report(image_paths, output_txt_path, search_terms):
     """Crée un rapport sous forme de fichier texte répertoriant les informations sur les images."""
-     # Partie fixe que l'on souhaite inclure dans chaque fichier texte
-    fixed_content = (
-        "===== RAPPORT D'ANALYSE D'IMAGES =====\n"
-        "Ce fichier contient des informations sur les images analysées.\n"
-        "Les paramètres répertoriés incluent :\n"
-        "- Seuil de binarisation\n"
-        "- Taille (largeur x hauteur)\n"
-        "- Niveau de gris moyen\n"
-        "- Format de l'image\n"
-        "======================================\n\n"
-    )
     
+    # En-tête du rapport
+    header = (
+        "#--- words.txt ---------------------------------------------------------------#\n"
+        "#\n"
+        "# iam database word information\n"
+        "#\n"
+        "# format: a01-000u-00-00 ok 154 1 408 768 27 51 AT A\n"
+        "#\n"
+        "#     a01-000u-00-00  -> word id for line 00 in form a01-000u\n"
+        "#     ok              -> result of word segmentation\n"
+        "#                            ok: word was correctly\n"
+        "#                            er: segmentation of word can be bad\n"
+        "#\n"
+        "#     154             -> graylevel to binarize the line containing this word\n"
+        "#     1               -> number of components for this word\n"
+        "#     408 768 27 51   -> bounding box around this word in x,y,w,h format\n"
+        "#     AT              -> the grammatical tag for this word, see the\n"
+        "#                        file tagset.txt for an explanation\n"
+        "#     A               -> the transcription for this word\n"
+        "#\n"
+    )
+
     # Ouvrir le fichier pour écrire les informations
     with open(output_txt_path, 'w') as report_file:
+        # Écrire l'en-tête
+        report_file.write(header)
+        
         # Parcourir chaque image dans la liste des chemins d'images
-        for image_path in image_paths:
+        for index, image_path in enumerate(image_paths):
             # Récupérer les informations de l'image
-            size, is_grayscale, img_format, threshold = get_image_info(image_path)
-            
-            # Écrire les informations dans le fichier texte
-            report_file.write(f"Image: {os.path.basename(image_path)}\n")
-            report_file.write(f" - Taille: {size[0]}x{size[1]}\n")
-            report_file.write(f" - Niveau de gris: {'Oui' if is_grayscale else 'Non'}\n")
-            report_file.write(f" - Format: {img_format}\n")
-            report_file.write(f" - Seuil de binarisation: {threshold}\n")
-            report_file.write("\n")  # Ajouter une ligne vide entre chaque image
+            size, is_grayscale, img_format, threshold, gray_level = get_image_info(image_path)
+
+
+            # Format de la ligne
+            word_id = f"a01-000u-00-{index:02d}"  # Générer l'ID de mot
+            result = "ok"  # Remplacer par une logique pour déterminer le résultat si nécessaire
+            graylevel = threshold  # Utiliser le seuil comme niveau de gris
+            components = 1  # Remplacer par le nombre réel de composants
+            bounding_box = f"{size[0]} {size[1]} 27 51"  # Exemple de format (x, y, w, h)
+            grammatical_tag = "AT"  # Exemple de balise grammaticale
+            transcription = "A"  # Exemple de transcription
+
+            # Ajouter les caractères de search_terms à la fin de la ligne sans espaces
+            search_terms_str = ''.join(search_terms)  # Convertir la liste en chaîne sans espaces
+            report_line = f"{word_id} {result} {graylevel} {components} {bounding_box} {grammatical_tag} {transcription} {search_terms_str}\n"
+
+            # Écrire la ligne dans le fichier texte
+            report_file.write(report_line)
 
     print(f"Rapport généré à {output_txt_path}")
 
@@ -78,16 +93,19 @@ def collect_images_from_directories(directories):
 # Exécution principale
 def main_txt(search_terms):
     # Liste des répertoires où se trouvent les images
+    base_path = r"S:\\Base_de_donnees_concat\\image_concatenee"
     
     # Collecter les chemins d'images
-    directories = [f"S:\Base de données concat\image_concatenee\{''.join(search_terms)}"]
+    directories = [os.path.join(base_path, ''.join(search_terms))]
     
     image_paths = collect_images_from_directories(directories)
     
     # Générer le fichier de rapport des images
-    output_txt_path = os.path.join(directories[0], f"rapport_images_{''.join(search_terms)}.txt")
-    create_image_report(image_paths, output_txt_path)
+    output_txt_path = os.path.join(base_path, f"rapport_images_{''.join(search_terms)}.txt")
+    create_image_report(image_paths, output_txt_path, search_terms)
 
 # Lancer le programme principal
 if __name__ == "__main__":
-    main_txt()
+    # Par exemple, passez des termes de recherche comme une liste de chaînes de caractères
+    search_terms = ["example"]
+    main_txt(search_terms)

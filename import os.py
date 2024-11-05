@@ -13,7 +13,7 @@ def list_subdirectories(parent_directory):
     return subdirectories
 
 # Spécifier le répertoire principal
-parent_directory = "BaseImages/BaseTestsReelle"  # Remplace par le chemin de ton dossier principal
+parent_directory = "S:\\BaseImages\\BaseTestsReelle"  # Remplace par le chemin de ton dossier principal
 
 # Obtenir la liste des sous-dossiers
 subdirectories = list_subdirectories(parent_directory)
