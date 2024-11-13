@@ -1,33 +1,20 @@
 import os
 from PIL import Image
 import numpy as np
-
+from rapport import extraire_dernier_groupe
 def get_image_info(image_path, threshold=128):
     """Récupère des informations sur une image, telles que la taille, le niveau de gris, le format, et le seuil de binarisation."""
-    # Ouvrir l'image
     with Image.open(image_path) as img:
-        # Obtenir la taille et le format
         size = img.size  # (largeur, hauteur)
         img_format = img.format
-        
-        # Vérifier si l'image est en niveaux de gris
-        is_grayscale = img.mode == 'L'  # True si image en niveaux de gris, sinon False
-        
-        # Convertir l'image en niveaux de gris pour la binariser (si elle ne l'est pas déjà)
+        is_grayscale = img.mode == 'L'
         gray_image = img.convert("L")
-        
-        # Binariser l'image avec le seuil donné
-        binary_image = gray_image.point(lambda p: p > threshold and 255)
-
-    # Calculer le niveau de gris moyen
-    gray_level = np.mean(np.array(gray_image))
-
+        gray_level = np.mean(np.array(gray_image))
+    
     return size, is_grayscale, img_format, threshold, gray_level
 
-def create_image_report(image_paths, output_txt_path, search_terms):
-    """Crée un rapport sous forme de fichier texte répertoriant les informations sur les images."""
-    
-    # En-tête du rapport
+def create_image_report(image_paths, base_path, report_path, search_terms, start_index=0):
+    """Crée un contenu de rapport pour chaque ensemble de 100 images avec le nom du fichier comme ID."""
     header = (
         "#--- words.txt ---------------------------------------------------------------#\n"
         "#\n"
@@ -35,77 +22,101 @@ def create_image_report(image_paths, output_txt_path, search_terms):
         "#\n"
         "# format: a01-000u-00-00 ok 154 1 408 768 27 51 AT A\n"
         "#\n"
-        "#     a01-000u-00-00  -> word id for line 00 in form a01-000u\n"
-        "#     ok              -> result of word segmentation\n"
-        "#                            ok: word was correctly\n"
-        "#                            er: segmentation of word can be bad\n"
-        "#\n"
-        "#     154             -> graylevel to binarize the line containing this word\n"
-        "#     1               -> number of components for this word\n"
-        "#     408 768 27 51   -> bounding box around this word in x,y,w,h format\n"
-        "#     AT              -> the grammatical tag for this word, see the\n"
-        "#                        file tagset.txt for an explanation\n"
-        "#     A               -> the transcription for this word\n"
-        "#\n"
     )
-
-    # Ouvrir le fichier pour écrire les informations
-    with open(output_txt_path, 'w') as report_file:
-        # Écrire l'en-tête
-        report_file.write(header)
+    
+    report_content = header
+    
+    # Itérer sur les images à partir de start_index pour traiter 100 images
+    for index, image_path in enumerate(image_paths[start_index:start_index+100], start=start_index):
+        # Récupérer les informations sur l'image
+        size, _, img_format, threshold, gray_level = get_image_info(image_path)
         
-        # Parcourir chaque image dans la liste des chemins d'images
-        for index, image_path in enumerate(image_paths):
-            # Récupérer les informations de l'image
-            size, is_grayscale, img_format, threshold, gray_level = get_image_info(image_path)
+        # Utiliser le nom du fichier comme word_id (sans le chemin ni l'extension)
+        word_id = os.path.basename(image_path).split('.')[0]
+        
+        nb_components = len(search_terms)
+        result = "ok"
+        bounding_box = calculate_bounding_box(image_path)
+        grammatical_tag = "AT"
+        search_terms_str = ''.join(search_terms)
+        
+        # Créer la ligne du rapport pour cette image
+        report_line = (
+            f"{word_id} {result} {int(gray_level)} {nb_components} {bounding_box} "
+            f"{grammatical_tag} {search_terms_str}\n"
+        )
+        report_content += report_line
 
+    # Créer ou fusionner le rapport
+    with open(report_path, 'w') as report_file:
+        report_file.write(report_content)
+    print(f"Rapport généré à {report_path}")
 
-            # Format de la ligne
-            word_id = f"a01-000u-00-{index:02d}"  # Générer l'ID de mot
-            result = "ok"  # Remplacer par une logique pour déterminer le résultat si nécessaire
-            graylevel = threshold  # Utiliser le seuil comme niveau de gris
-            components = 1  # Remplacer par le nombre réel de composants
-            bounding_box = f"{size[0]} {size[1]} 27 51"  # Exemple de format (x, y, w, h)
-            grammatical_tag = "AT"  # Exemple de balise grammaticale
-            transcription = "A"  # Exemple de transcription
-
-            # Ajouter les caractères de search_terms à la fin de la ligne sans espaces
-            search_terms_str = ''.join(search_terms)  # Convertir la liste en chaîne sans espaces
-            report_line = f"{word_id} {result} {graylevel} {components} {bounding_box} {grammatical_tag} {transcription} {search_terms_str}\n"
-
-            # Écrire la ligne dans le fichier texte
-            report_file.write(report_line)
-
-    print(f"Rapport généré à {output_txt_path}")
-
-def collect_images_from_directories(directories):
-    """Collecte tous les chemins d'images dans les répertoires donnés."""
+def collect_images_from_directory(directory):
+    """Collecte tous les chemins d'images dans le répertoire donné, triés par nom."""
     image_paths = []
-    for directory in directories:
-        if os.path.exists(directory):
-            for file_name in os.listdir(directory):
-                file_path = os.path.join(directory, file_name)
-                # Vérifier que c'est bien une image avant de l'ajouter
-                if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
-                    image_paths.append(file_path)
+    if os.path.exists(directory):
+        for file_name in sorted(os.listdir(directory)):
+            file_path = os.path.join(directory, file_name)
+            if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+                image_paths.append(file_path)
     return image_paths
 
-# Exécution principale
 def main_txt(search_terms):
-    # Liste des répertoires où se trouvent les images
-    base_path = r"C:\\Users\\Utilisateur\\OneDrive\\Documents\\Chess\\image_concatenee"
-    
-    # Collecter les chemins d'images
-    directories = [os.path.join(base_path, ''.join(search_terms))]
-    
-    image_paths = collect_images_from_directories(directories)
-    
-    # Générer le fichier de rapport des images
-    output_txt_path = os.path.join(base_path, f"rapport_images_{''.join(search_terms)}.txt")
-    create_image_report(image_paths, output_txt_path, search_terms)
+    base_path = r"C:\Users\Utilisateur\OneDrive\Documents\Chess\image_concatenee"
+    image_paths = collect_images_from_directory(base_path)
 
-# Lancer le programme principal
+    for i in range(0, len(image_paths), 100):
+        output_txt_path = os.path.join(base_path, f"rapport_images_{''.join(search_terms)}_{i//100}.txt")
+        create_image_report(image_paths,base_path, output_txt_path, search_terms, start_index=i)
+
 if __name__ == "__main__":
-    # Par exemple, passez des termes de recherche comme une liste de chaînes de caractères
     search_terms = ["example"]
     main_txt(search_terms)
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
+def calculate_bounding_box(image_path, threshold=128):
+    """Calcule la bounding box d'une image basée sur un seuil de binarisation."""
+    """Calcule et affiche la bounding box d'une image avec l'image."""
+    with Image.open(image_path) as img:
+        # Convertir l'image en niveaux de gris
+        gray_image = img.convert("L")
+        
+        # Convertir en tableau numpy
+        img_array = np.array(gray_image)
+        
+        # Appliquer un seuil pour obtenir une image binaire
+        binary_image = img_array < threshold
+        
+        # Trouver les positions des pixels non nuls (True)
+        coords = np.argwhere(binary_image)
+        
+        # Si des pixels sont trouvés, calculer la bounding box
+        if coords.size > 0:
+            y_min, x_min = coords.min(axis=0)
+            y_max, x_max = coords.max(axis=0)
+            bounding_box = (x_min, y_min, x_max, y_max)
+        else:
+            # Si aucun pixel n'est trouvé, retourner une bounding box vide
+            bounding_box = (0, 0, 0, 0)
+        
+        # Afficher l'image avec la bounding box
+        #plt.imshow(img, cmap="gray")
+        # Dessiner la bounding box
+        # plt.gca().add_patch(
+        #     plt.Rectangle(
+        #         (x_min, y_min),  # Position (x, y)
+        #         x_max - x_min,   # Largeur
+        #         y_max - y_min,   # Hauteur
+        #         edgecolor="red",
+        #         facecolor="none",
+        #         linewidth=2
+        #     )
+        # )
+        # plt.title("Image avec Bounding Box")
+        # plt.axis("off")  # Masquer les axes
+        # plt.close()
+    
+    return bounding_box
+

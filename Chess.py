@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 from matchingfiles import *
 from PIL import Image, ImageChops, ImageFilter
@@ -7,6 +8,9 @@ import random
 from skimage import morphology, measure
 from txt import *
 import matplotlib.pyplot as plt
+import shutil 
+from rapport import extraire_dernier_groupe, concat_reports
+from merge import merge_reports
 
 def show_image(image, title="Image"):
     """Affiche une image avec un titre."""
@@ -96,76 +100,112 @@ def trim_image(image):
     #print("Aucune bordure trouvée, l'image reste inchangée")
     return processed_image
 
-def concat_images(images, output_path):
-    """Concatène les images données en une seule image juxtaposée et les sauvegarde à output_path."""
-    opened_images = [Image.open(img).convert('RGB') for img in images]  # Convertir chaque image en RGB
-    #print("Images chargées")
+def get_next_image_id(output_dir):
+    """Détermine l'ID de l'image suivant en vérifiant les fichiers existants dans le dossier."""
+    existing_files = os.listdir(output_dir)
+    ids = []
 
-    # Recadrer et redimensionner les images pour enlever les bordures blanches ou transparentes
-    processed_images = []
-    target_height = 32  # Hauteur cible pour toutes les images
-    for image in opened_images:
-        trimmed_image = trim_image(image)  # Recadre l'image
-        # Redimensionner chaque image à la même hauteur
-        aspect_ratio = trimmed_image.width / trimmed_image.height
-        new_width = int(target_height * aspect_ratio)
-        resized_image = trimmed_image.resize((new_width, target_height), Image.LANCZOS)
-        processed_images.append(resized_image)  # Ajoute l'image traitée à la liste
+    for file_name in existing_files:
+        # Utiliser une expression régulière pour extraire l'ID
+        match = re.search(r'(\d+)\.png$', file_name)
+        if match:
+            ids.append(int(match.group(1)))
 
-    #print("Images recadrées et redimensionnées")
+    # Trouver le plus grand ID et l'incrémenter
+    next_id = max(ids) + 1 if ids else 1
+    return next_id
 
-    # Créer une nouvelle image ayant la largeur totale et la hauteur cible
-    total_width = sum(img.width for img in processed_images)  # Largeur totale sans espaces
-    combined_image = Image.new('RGB', (total_width, target_height), (255, 255, 255))  # Fond blanc
-    #print(f"Nouvelle image créée avec largeur totale {total_width} et hauteur {target_height}")
+def concat_images(images, output_dir, next_id, padding=5):
+    """Concatène les images données après avoir redimensionné toutes les images à la même taille,
+       appliqué 'trim_image', et les enregistre en suivant l'ID incrémenté avec un espacement uniforme,
+       tout en ajoutant un padding spécifique à la première image."""
 
-    # Coller chaque image l'une à côté de l'autre sans espace
-    x_offset = 0
+    # Ouvrir et convertir toutes les images en RGB
+    opened_images = [Image.open(img).convert('RGB') for img in images]
+    
+    # Appliquer 'trim_image' à chaque image après la conversion
+    processed_images = [trim_image(img) for img in opened_images]
+    
+    # Trouver la largeur et la hauteur maximales parmi toutes les images traitées pour définir la taille uniforme
+    max_width = max(img.width for img in processed_images)
+    max_height = max(img.height for img in processed_images)
+    
+    # Redimensionner toutes les images à la même taille (max_width x max_height) tout en maintenant l'aspect ratio
+    resized_images = []
     for img in processed_images:
-        combined_image.paste(img, (x_offset, 0))
-        x_offset += img.width  # Ajoute uniquement la largeur de l'image suivante
-        #print(f"Image collée à l'offset {x_offset}")
+        img_resized = img.resize((max_width, max_height), Image.Resampling.LANCZOS)  # Redimensionnement
+        resized_images.append(img_resized)
+    
+    # Calculer la largeur totale de l'image concaténée (en tenant compte des images redimensionnées et du padding)
+    total_width = sum(img.width for img in resized_images) + (len(resized_images) - 1) * padding
+    total_height = max(img.height for img in resized_images)
+    
+    # Créer une nouvelle image blanche avec la largeur et la hauteur totale
+    combined_image = Image.new('RGB', (total_width, total_height), (255, 255, 255))
+
+    # Coller les images redimensionnées une à une avec un padding entre elles
+    x_offset = 10  # Appliquer un padding supplémentaire pour la première image
+    for idx, img in enumerate(resized_images):
+        combined_image.paste(img, (x_offset, 0))  # Coller l'image à la position x_offset
+        x_offset += img.width + padding  # Avancer de la largeur de l'image + le padding
+
+    # Générer le nom de fichier avec l'ID calculé
+    output_file_name = f"a01-000u-00-{next_id:02d}.png"
+    output_path = os.path.join(output_dir, output_file_name)
 
     # Sauvegarder l'image combinée
     combined_image.save(output_path)
-    #print(f"Image combinée sauvegardée dans {output_path}")
 
-# Exemple d'utilisation
 def automate_image_combination():
+    # Récupère les fichiers et les inputs
+
     matching_files, search_inputs = main()
+    
+    # Crée toutes les combinaisons possibles des fichiers
+    all_combinations = list(itertools.product(*matching_files.values()))
+    
+    # Sélectionne un échantillon aléatoire de 100 combinaisons ou toutes si moins de 100
+    selected_combinations = random.sample(all_combinations, 100) if len(all_combinations) > 100 else all_combinations
 
-    # Transformer le dictionnaire en une liste de listes
-    lists_of_files = [matching_files[term] for term in matching_files]
+    # Dossier de sortie où les images concaténées seront enregistrées
+    output_dir = r"C:\Users\Utilisateur\OneDrive\Documents\Chess\image_concatenee"
+    os.makedirs(output_dir, exist_ok=True)
 
-    # Vérifier si au moins deux dossiers contiennent des images
-    if len(lists_of_files) < 2:
-        #print("Erreur : Au moins deux dossiers avec des images sont nécessaires.")
-        return
+    # Crée un dossier 'images' pour stocker les images
+    images_dir = os.path.join(output_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
 
-    # Générer toutes les combinaisons possibles
-    all_combinations = list(itertools.product(*lists_of_files))
+    # Obtenez l'ID suivant pour l'enregistrement des fichiers (première image)
+    next_id = extraire_dernier_groupe(os.path.join(output_dir, 'images'))
 
-    # Limiter à 100 combinaisons aléatoires si plus de 100 sont générées
-    if len(all_combinations) > 100:
-        selected_combinations = random.sample(all_combinations, 100)
-    else:
-        selected_combinations = all_combinations
+    # Liste pour stocker les chemins des images générées
+    image_paths = []
 
-    output_dir = get_output_path(search_inputs)
-
-    counter = 1
-
-    for combination in selected_combinations:
+    # Parcourt chaque combinaison et concatène les images
+    for idx, combination in enumerate(selected_combinations):
         images_to_concat = list(combination)
-        output_file_name = f"combined_image_{''.join(search_inputs)}_{counter}.png"
-        counter += 1
+        # Pour la première image, on utilise next_id
+        if idx == 0:
+            # Concatène la première image et l'enregistre avec next_id
+            concat_images(images_to_concat, output_dir, next_id)
+            image_paths.append(os.path.join(output_dir, f"a01-000u-00-{next_id:02d}.png"))
+        else:
+            # Pour les images suivantes, on utilise last_id (ID mis à jour après chaque image)
+            last_id = extraire_dernier_groupe(output_dir) + 1 # Dernier ID utilisé dans le dossier
+            concat_images(images_to_concat, output_dir, last_id)
+            image_paths.append(os.path.join(output_dir, f"a01-000u-00-{last_id:02d}.png"))
 
-        output_path = os.path.join(output_dir, output_file_name)
-        concat_images(images_to_concat, output_path)
+
+    # Crée le rapport des images (fonction commentée ici, vous pouvez la décommenter si nécessaire)
+    report_path = os.path.join(output_dir, "rapport_images.txt")
     main_txt(search_inputs)
+
+    # Déplace les images concaténées dans le dossier 'images'
+    for img_path in image_paths:
+        shutil.move(img_path, os.path.join(images_dir, os.path.basename(img_path)))
+    #fusion rapport
+    merge_reports(output_dir)
+    #bouger images
 
 # Exécuter l'automatisation
 automate_image_combination()
-
-
-
