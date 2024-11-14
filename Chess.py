@@ -115,10 +115,10 @@ def get_next_image_id(output_dir):
     next_id = max(ids) + 1 if ids else 1
     return next_id
 
-def concat_images(images, output_dir, next_id, padding=5):
+def concat_images(images, output_dir, next_id, padding=5, target_size=(128, 32)):
     """Concatène les images données après avoir redimensionné toutes les images à la même taille,
        appliqué 'trim_image', et les enregistre en suivant l'ID incrémenté avec un espacement uniforme,
-       tout en ajoutant un padding spécifique à la première image."""
+       tout en ajoutant un padding spécifique à la première image, puis redimensionne l'image combinée."""
 
     # Ouvrir et convertir toutes les images en RGB
     opened_images = [Image.open(img).convert('RGB') for img in images]
@@ -133,7 +133,7 @@ def concat_images(images, output_dir, next_id, padding=5):
     # Redimensionner toutes les images à la même taille (max_width x max_height) tout en maintenant l'aspect ratio
     resized_images = []
     for img in processed_images:
-        img_resized = img.resize((max_width, max_height), Image.Resampling.LANCZOS)  # Redimensionnement
+        img_resized = img.resize((max_width, max_height), Image.LANCZOS)  # Fallback for older versions of Pillow
         resized_images.append(img_resized)
     
     # Calculer la largeur totale de l'image concaténée (en tenant compte des images redimensionnées et du padding)
@@ -149,12 +149,16 @@ def concat_images(images, output_dir, next_id, padding=5):
         combined_image.paste(img, (x_offset, 0))  # Coller l'image à la position x_offset
         x_offset += img.width + padding  # Avancer de la largeur de l'image + le padding
 
+    # Redimensionner l'image combinée à la taille cible après la concaténation
+    combined_image_resized = resize_image(combined_image, target_size)
+    
     # Générer le nom de fichier avec l'ID calculé
     output_file_name = f"a01-000u-00-{next_id:02d}.png"
     output_path = os.path.join(output_dir, output_file_name)
+    
+    # Sauvegarder l'image combinée redimensionnée
+    combined_image_resized.save(output_path)
 
-    # Sauvegarder l'image combinée
-    combined_image.save(output_path)
 
 def automate_image_combination():
     # Récupère les fichiers et les inputs
@@ -168,7 +172,7 @@ def automate_image_combination():
     selected_combinations = random.sample(all_combinations, 100) if len(all_combinations) > 100 else all_combinations
 
     # Dossier de sortie où les images concaténées seront enregistrées
-    output_dir = r"C:\Users\Utilisateur\OneDrive\Documents\Chess\image_concatenee"
+    output_dir = r"C:\Users\chess2425\Downloads\Chess_Project-Mael\Chess_Project-Mael\image_concatenee"
     os.makedirs(output_dir, exist_ok=True)
 
     # Crée un dossier 'images' pour stocker les images
@@ -187,6 +191,7 @@ def automate_image_combination():
         # Pour la première image, on utilise next_id
         if idx == 0:
             # Concatène la première image et l'enregistre avec next_id
+            next_id += 1
             concat_images(images_to_concat, output_dir, next_id)
             image_paths.append(os.path.join(output_dir, f"a01-000u-00-{next_id:02d}.png"))
         else:

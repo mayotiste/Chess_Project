@@ -63,7 +63,7 @@ def collect_images_from_directory(directory):
     return image_paths
 
 def main_txt(search_terms):
-    base_path = r"C:\Users\Utilisateur\OneDrive\Documents\Chess\image_concatenee"
+    base_path = r"C:\Users\chess2425\Downloads\Chess_Project-Mael\Chess_Project-Mael\image_concatenee"
     image_paths = collect_images_from_directory(base_path)
 
     for i in range(0, len(image_paths), 100):
