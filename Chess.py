@@ -172,7 +172,7 @@ def automate_image_combination():
     selected_combinations = random.sample(all_combinations, 100) if len(all_combinations) > 100 else all_combinations
 
     # Dossier de sortie où les images concaténées seront enregistrées
-    output_dir = r"C:\Users\chess2425\Downloads\Chess_Project-Mael\Chess_Project-Mael\image_concatenee"
+    output_dir = r"C:\Users\Utilisateur\OneDrive\Documents\Chess\image_concatenee"
     os.makedirs(output_dir, exist_ok=True)
 
     # Crée un dossier 'images' pour stocker les images

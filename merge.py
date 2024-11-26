@@ -24,7 +24,7 @@ def merge_reports(base_path):
         "#     A               -> the transcription for this word\n"
     )
     
-    rapport_global_path = os.path.join(r'C:\Users\chess2425\Downloads\Chess_Project-Mael\Chess_Project-Mael', "rapport_global.txt")
+    rapport_global_path = os.path.join(r'C:\Users\Utilisateur\OneDrive\Documents\Chess', "rapport_global.txt")
     
     # Lister les fichiers dans le répertoire
     report_files = [f for f in os.listdir(base_path) if f.startswith("rapport_images")]

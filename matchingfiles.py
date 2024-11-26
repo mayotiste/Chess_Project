@@ -34,7 +34,7 @@ def main():
     search_terms = search_inputs
 
     # Liste des répertoires contenant les images pour chaque terme de recherche
-    directories = [f"C:\\Users\\chess2425\\Downloads\\Chess_Project-Mael\\Chess_Project-Mael\\BaseTestsReelle//{term}" for term in search_terms]
+    directories = [f"C:\\Users\\Utilisateur\\OneDrive\\Documents\\Chess\BaseTestsReelle//{term}" for term in search_terms]
 
     # Trouver les fichiers correspondants
     matching_files = find_matching_files(directories, search_terms)
@@ -42,7 +42,7 @@ def main():
     return matching_files, search_inputs
     
 
-def get_output_path(search_inputs, base_dir=r"C:\Users\chess2425\Downloads\Chess_Project-Mael\Chess_Project-Mael\image_concatenee"):
+def get_output_path(search_inputs, base_dir=r"C:\Users\Utilisateur\OneDrive\Documents\Chess\matchingfiles.py\image_concatenee"):
     """Retourne le chemin final où les images concaténées seront sauvegardées."""
     # Joindre les caractères entrés pour créer le nom du dossier
     output_folder_name = f"{''.join(search_inputs)}"
