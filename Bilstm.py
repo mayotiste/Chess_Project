@@ -71,7 +71,7 @@ def create_model(input_shape, num_classes):
         Dropout(0.25),
         Flatten(),
         Dense(128, activation='relu'),
-        Dropout(0.5),
+        Dropout(0.3),
         Dense(num_classes, activation='softmax')
     ])
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -80,7 +80,7 @@ def create_model(input_shape, num_classes):
 model = create_model((32, 128, 1), len(label_encoder.classes_))
 
 # Entraînement du modèle
-history = model.fit(X_train, y_train, validation_split=0.2, epochs=10, batch_size=32)
+history = model.fit(X_train, y_train, validation_split=0.2, epochs=15, batch_size=32)
 
 # Évaluation
 test_loss, test_accuracy = model.evaluate(X_test, y_test)

@@ -23,9 +23,9 @@ def predict_move(image_path, model, label_encoder):
     return predicted_label, confidence
 
 # Charger le modèle et le LabelEncoder
-model = load_model(r"C:\Users\Utilisateur\OneDrive\Documents\Chess\chessmodel.keras")  # Mettez le chemin correct du modèle
+model = load_model(r"C:\Users\Utilisateur\OneDrive\Documents\Chess\chessmodel.keras")  
 label_encoder = LabelEncoder()
-label_encoder.fit(["Dxe5","e1","e2","e3","e6","e4=D","h=5#", "e4", "Fxe4", "Fxe6", "o-o", "Rfx4", "RxF4"])  # Exemple d'étiquettes
+label_encoder.fit(["Dxe5","e1","e2","e3","e6","e4=D#","h=5#", "e4", "Fxe4", "Fxe6", "RFx4", "RxF4", "DxeF", "Dxe6"])  
 
 # Répertoire des images
 images_dir = r"C:\Users\Utilisateur\OneDrive\Documents\Chess\image_concatenee\images"
@@ -55,3 +55,6 @@ for i, (image_name, ax) in enumerate(zip(random_images, axes.flatten())):
 plt.tight_layout()
 plt.show()
 
+# example_image = os.path.join(images_dir, "whatsap.png")
+# predicted_move = predict_move(example_image, model, label_encoder)
+# print(f"Predicted move: {predicted_move}")
