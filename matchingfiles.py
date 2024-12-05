@@ -39,6 +39,8 @@ def main():
     # Trouver les fichiers correspondants
     matching_files = find_matching_files(directories, search_terms)
 
+
+    
     return matching_files, search_inputs
     
 

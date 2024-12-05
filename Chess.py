@@ -29,11 +29,9 @@ def open_image(image):
 
     # Binariser l'image (ajuster le seuil selon les besoins)
     binary_image = image_array > 128
-    #show_image(Image.fromarray(binary_image.astype(np.uint8) * 255), "Image Binarisée")
 
     # Appliquer l'ouverture (érosion suivie d'une dilatation) avec une structure plus petite
     opened_image = morphology.binary_opening(binary_image, morphology.square(2))  # Réduit la taille de 3 à 2
-    #show_image(Image.fromarray(opened_image.astype(np.uint8) * 255), "Image Ouverte (Érosion + Dilatation)")
 
     # Supprimer les petits objets en dessous d'une certaine taille (e.g., taille < 64 pixels)
     cleaned_image = morphology.remove_small_objects(opened_image, min_size=64)
@@ -166,25 +164,19 @@ def automate_image_combination():
     matching_files, search_inputs = main()
     
     # Crée toutes les combinaisons possibles des fichiers
-    all_combinations = list(itertools.product(*matching_files.values()))
-    
+    all_combinations = list(itertools.product(*matching_files.values()))   
     # Sélectionne un échantillon aléatoire de 100 combinaisons ou toutes si moins de 100
     selected_combinations = random.sample(all_combinations, 100) if len(all_combinations) > 100 else all_combinations
-
     # Dossier de sortie où les images concaténées seront enregistrées
     output_dir = r"C:\Users\Utilisateur\OneDrive\Documents\Chess\image_concatenee"
     os.makedirs(output_dir, exist_ok=True)
-
     # Crée un dossier 'images' pour stocker les images
     images_dir = os.path.join(output_dir, "images")
     os.makedirs(images_dir, exist_ok=True)
-
     # Obtenez l'ID suivant pour l'enregistrement des fichiers (première image)
     next_id = extraire_dernier_groupe(os.path.join(output_dir, 'images'))
-
     # Liste pour stocker les chemins des images générées
     image_paths = []
-
     # Parcourt chaque combinaison et concatène les images
     for idx, combination in enumerate(selected_combinations):
         images_to_concat = list(combination)
@@ -199,8 +191,6 @@ def automate_image_combination():
             last_id = extraire_dernier_groupe(output_dir) + 1 # Dernier ID utilisé dans le dossier
             concat_images(images_to_concat, output_dir, last_id)
             image_paths.append(os.path.join(output_dir, f"a01-000u-00-{last_id:02d}.png"))
-
-
     # Crée le rapport des images (fonction commentée ici, vous pouvez la décommenter si nécessaire)
     report_path = os.path.join(output_dir, "rapport_images.txt")
     main_txt(search_inputs)
@@ -208,9 +198,7 @@ def automate_image_combination():
     # Déplace les images concaténées dans le dossier 'images'
     for img_path in image_paths:
         shutil.move(img_path, os.path.join(images_dir, os.path.basename(img_path)))
-    #fusion rapport
     merge_reports(output_dir)
-    #bouger images
 
 # Exécuter l'automatisation
 automate_image_combination()
